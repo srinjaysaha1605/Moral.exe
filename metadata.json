@@ -1,0 +1,8 @@
+{
+  "name": "MORAL.EXE",
+  "description": "An experimental behavioral analysis platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

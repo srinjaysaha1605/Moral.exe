@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'Doctor Glitch';
+  src: url('/fonts/DoctorGlitch.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+@theme {
+  --font-display: "Chakra Petch", sans-serif;
+  --font-sans: "Outfit", sans-serif;
+  --font-glitch: "Doctor Glitch", "Rubik Glitch", sans-serif;
+}
+
+html, body {
+  background-color: #000000;
+  color: #ffffff;
+  width: 100%;
+  max-width: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-glitch {
+  font-family: var(--font-glitch);
+}
+
+/* Hide visible scrollbar across all elements and browsers while keeping vertical scrolling 100% functional */
+html,
+body,
+#root,
+* {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE and Edge */
+}
+
+*::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari, Opera */
+  width: 0px !important;
+  height: 0px !important;
+}
