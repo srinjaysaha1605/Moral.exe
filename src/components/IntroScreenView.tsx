@@ -29,8 +29,6 @@ const TRANSITION_TIME = TAGLINE_END + WAIT_AFTER_FINISH; // 2750ms
 export const IntroScreenView: React.FC<IntroScreenViewProps> = ({ onEnter }) => {
   const [titleProgress, setTitleProgress] = useState(0);
   const [taglineProgress, setTaglineProgress] = useState(0);
-  const [titleCount, setTitleCount] = useState(0);
-  const [taglineCount, setTaglineCount] = useState(0);
 
   const onEnterRef = useRef(onEnter);
   onEnterRef.current = onEnter;
@@ -57,42 +55,28 @@ export const IntroScreenView: React.FC<IntroScreenViewProps> = ({ onEnter }) => 
       if (elapsed < START_DELAY) {
         setTitleProgress(0);
         setTaglineProgress(0);
-        setTitleCount(0);
-        setTaglineCount(0);
       } else if (elapsed < TITLE_END) {
         // Step 1: Smooth continuous typing for "MORAL.EXE" (~0.6s)
         const progress = Math.min(1, Math.max(0, (elapsed - START_DELAY) / TITLE_DURATION));
         setTitleProgress(progress);
         setTaglineProgress(0);
-        const count = Math.min(TARGET_TITLE.length, Math.floor(progress * TARGET_TITLE.length) + 1);
-        setTitleCount(count);
-        setTaglineCount(0);
       } else if (elapsed < TAGLINE_START) {
         // Pause between title and tagline
         setTitleProgress(1);
         setTaglineProgress(0);
-        setTitleCount(TARGET_TITLE.length);
-        setTaglineCount(0);
       } else if (elapsed < TAGLINE_END) {
         // Step 2: Smooth continuous typing for tagline (~1.5s)
         setTitleProgress(1);
         const progress = Math.min(1, Math.max(0, (elapsed - TAGLINE_START) / TAGLINE_DURATION));
         setTaglineProgress(progress);
-        setTitleCount(TARGET_TITLE.length);
-        const count = Math.min(TARGET_TAGLINE.length, Math.floor(progress * TARGET_TAGLINE.length) + 1);
-        setTaglineCount(count);
       } else if (elapsed < TRANSITION_TIME) {
         // Wait ~0.2s
         setTitleProgress(1);
         setTaglineProgress(1);
-        setTitleCount(TARGET_TITLE.length);
-        setTaglineCount(TARGET_TAGLINE.length);
       } else {
         // Step 6: Automatically transition to Page 2
         setTitleProgress(1);
         setTaglineProgress(1);
-        setTitleCount(TARGET_TITLE.length);
-        setTaglineCount(TARGET_TAGLINE.length);
         triggerEnter();
         return;
       }
@@ -117,8 +101,6 @@ export const IntroScreenView: React.FC<IntroScreenViewProps> = ({ onEnter }) => 
         <IntroPoster
           titleProgress={titleProgress}
           taglineProgress={taglineProgress}
-          titleCharCount={titleCount}
-          taglineCharCount={taglineCount}
         />
       </div>
     </div>
