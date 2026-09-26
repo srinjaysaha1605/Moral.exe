@@ -6,6 +6,9 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+export const app = express();
+app.use(express.json());
+
 let geminiClient: GoogleGenAI | null = null;
 function getGeminiClient(): GoogleGenAI | null {
   if (!geminiClient && process.env.GEMINI_API_KEY) {
@@ -50,49 +53,43 @@ async function callGeminiWithFallback(params: { contents: string; config?: any }
   return null;
 }
 
-async function startServer() {
-  const app = express();
-  const PORT = process.env.PORT || 3000;
-
-  app.use(express.json());
-
-  // Health check
-  app.get('/api/health', (_req: Request, res: Response) => {
-    res.json({
-      status: 'ok',
-      service: 'MORAL.EXE Server',
-      timestamp: new Date().toISOString(),
-    });
+// Health check
+app.get('/api/health', (_req: Request, res: Response) => {
+  res.json({
+    status: 'ok',
+    service: 'MORAL.EXE Server',
+    timestamp: new Date().toISOString(),
   });
+});
 
-  // Server config check
-  app.get('/api/config', (_req: Request, res: Response) => {
-    res.json({
-      geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
-    });
+// Server config check
+app.get('/api/config', (_req: Request, res: Response) => {
+  res.json({
+    geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
   });
+});
 
-  // ============================================================================
-  // MORAL.EXE BEHAVIORAL ANALYSIS ENDPOINTS
-  // ============================================================================
-  app.post('/api/moral/generate-question', async (req: Request, res: Response) => {
-    try {
-      const {
-        experimentId,
-        experimentTitle,
-        stepNumber,
-        targetDimensionId,
-        scenarioType,
-        difficulty,
-        previousScenarios,
-      } = req.body;
+// ============================================================================
+// MORAL.EXE BEHAVIORAL ANALYSIS ENDPOINTS
+// ============================================================================
+app.post('/api/moral/generate-question', async (req: Request, res: Response) => {
+  try {
+    const {
+      experimentId,
+      experimentTitle,
+      stepNumber,
+      targetDimensionId,
+      scenarioType,
+      difficulty,
+      previousScenarios,
+    } = req.body;
 
-      if (!process.env.GEMINI_API_KEY) {
-        res.json({ success: false, fallback: true, message: 'Gemini API key not configured.' });
-        return;
-      }
+    if (!process.env.GEMINI_API_KEY) {
+      res.json({ success: false, fallback: true, message: 'Gemini API key not configured.' });
+      return;
+    }
 
-      const prompt = `You are MORAL.EXE, a decision-making analysis assistant.
+    const prompt = `You are MORAL.EXE, a decision-making analysis assistant.
 Generate question ${stepNumber || 1} of 10 for the test: "${experimentTitle || experimentId}".
 
 Target Focus: "${targetDimensionId}"
@@ -119,54 +116,54 @@ Respond in strictly valid JSON:
   ]
 }`;
 
-      const raw = await callGeminiWithFallback({
-        contents: prompt,
-        config: { responseMimeType: 'application/json' },
-      });
+    const raw = await callGeminiWithFallback({
+      contents: prompt,
+      config: { responseMimeType: 'application/json' },
+    });
 
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.scenario && Array.isArray(parsed.options) && parsed.options.length === 4) {
-          res.json({
-            success: true,
-            question: {
-              id: `q_ai_${Date.now()}_${stepNumber}`,
-              scenario: parsed.scenario,
-              options: parsed.options,
-              targetDimensionId,
-              scenarioType: scenarioType || 'subtle_dilemma',
-              difficulty: difficulty || 'baseline',
-            },
-          });
-          return;
-        }
-      }
-
-      res.json({ success: false, fallback: true });
-    } catch (err: any) {
-      console.warn('[MORAL.EXE API] Dynamic question generation fallback:', err?.message || err);
-      res.json({ success: false, fallback: true });
-    }
-  });
-
-  app.post('/api/moral/generate-analysis', async (req: Request, res: Response) => {
-    try {
-      const { experimentTitle, archetype, scores, contradiction, answersHistory } = req.body;
-
-      if (!process.env.GEMINI_API_KEY) {
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.scenario && Array.isArray(parsed.options) && parsed.options.length === 4) {
         res.json({
-          success: false,
-          fallback: true,
-          report: {
-            executiveSummary: archetype?.summary || 'Behavioral evaluation complete.',
-            dimensionalBreakdown: 'Analysis derived from your decision choices.',
-            strategicRecommendations: contradiction?.detail || 'Continue self-reflection across decision domains.',
+          success: true,
+          question: {
+            id: `q_ai_${Date.now()}_${stepNumber}`,
+            scenario: parsed.scenario,
+            options: parsed.options,
+            targetDimensionId,
+            scenarioType: scenarioType || 'subtle_dilemma',
+            difficulty: difficulty || 'baseline',
           },
         });
         return;
       }
+    }
 
-      const prompt = `You are MORAL.EXE, a clear and helpful decision analysis system.
+    res.json({ success: false, fallback: true });
+  } catch (err: any) {
+    console.warn('[MORAL.EXE API] Dynamic question generation fallback:', err?.message || err);
+    res.json({ success: false, fallback: true });
+  }
+});
+
+app.post('/api/moral/generate-analysis', async (req: Request, res: Response) => {
+  try {
+    const { experimentTitle, archetype, scores, contradiction, answersHistory } = req.body;
+
+    if (!process.env.GEMINI_API_KEY) {
+      res.json({
+        success: false,
+        fallback: true,
+        report: {
+          executiveSummary: archetype?.summary || 'Behavioral evaluation complete.',
+          dimensionalBreakdown: 'Analysis derived from your decision choices.',
+          strategicRecommendations: contradiction?.detail || 'Continue self-reflection across decision domains.',
+        },
+      });
+      return;
+    }
+
+    const prompt = `You are MORAL.EXE, a clear and helpful decision analysis system.
 Write a clear, easy-to-understand decision analysis report for a participant in the test: "${experimentTitle}".
 
 PARTICIPANT EVALUATION:
@@ -188,63 +185,69 @@ Respond in strictly valid JSON:
   "strategicRecommendations": "2 simple sentences..."
 }`;
 
-      const raw = await callGeminiWithFallback({
-        contents: prompt,
-        config: { responseMimeType: 'application/json' },
-      });
+    const raw = await callGeminiWithFallback({
+      contents: prompt,
+      config: { responseMimeType: 'application/json' },
+    });
 
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.executiveSummary && parsed.dimensionalBreakdown && parsed.strategicRecommendations) {
-          res.json({
-            success: true,
-            report: parsed,
-          });
-          return;
-        }
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.executiveSummary && parsed.dimensionalBreakdown && parsed.strategicRecommendations) {
+        res.json({
+          success: true,
+          report: parsed,
+        });
+        return;
       }
+    }
 
-      res.json({
-        success: false,
-        fallback: true,
-        report: {
-          executiveSummary: archetype?.summary || 'Decision profile complete.',
-          dimensionalBreakdown: 'Your choices show consistent decision patterns across tested scenarios.',
-          strategicRecommendations: contradiction?.detail || 'Keep your main tendencies in mind during key choices.',
-        },
+    res.json({
+      success: false,
+      fallback: true,
+      report: {
+        executiveSummary: archetype?.summary || 'Decision profile complete.',
+        dimensionalBreakdown: 'Your choices show consistent decision patterns across tested scenarios.',
+        strategicRecommendations: contradiction?.detail || 'Keep your main tendencies in mind during key choices.',
+      },
+    });
+  } catch (err: any) {
+    console.warn('[MORAL.EXE API] Analysis report fallback:', err?.message || err);
+    res.json({
+      success: false,
+      fallback: true,
+      report: {
+        executiveSummary: 'Decision profile complete.',
+        dimensionalBreakdown: 'Your choices show consistent decision patterns across tested scenarios.',
+        strategicRecommendations: 'Keep your main tendencies in mind during key choices.',
+      },
+    });
+  }
+});
+
+export default app;
+
+if (!process.env.VERCEL) {
+  const PORT = Number(process.env.PORT) || 3000;
+
+  async function startStandaloneServer() {
+    if (process.env.NODE_ENV !== 'production') {
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: 'spa',
       });
-    } catch (err: any) {
-      console.warn('[MORAL.EXE API] Analysis report fallback:', err?.message || err);
-      res.json({
-        success: false,
-        fallback: true,
-        report: {
-          executiveSummary: 'Decision profile complete.',
-          dimensionalBreakdown: 'Your choices show consistent decision patterns across tested scenarios.',
-          strategicRecommendations: 'Keep your main tendencies in mind during key choices.',
-        },
+      app.use(vite.middlewares);
+    } else {
+      const distPath = path.join(process.cwd(), 'dist');
+      app.use(express.static(distPath));
+      app.get('*', (_req: Request, res: Response) => {
+        res.sendFile(path.join(distPath, 'index.html'));
       });
     }
-  });
 
-  // Vite middleware for development or static serving for production
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (_req: Request, res: Response) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`MORAL.EXE server running on port ${PORT}`);
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`MORAL.EXE server running on port ${PORT}`);
-  });
+  startStandaloneServer();
 }
-
-startServer();
